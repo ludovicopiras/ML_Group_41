@@ -1,8 +1,4 @@
-"""Central place for all project paths.
-
-Every notebook and module imports its paths from here, so nobody hard-codes
-folder locations and the code works on every teammate's machine.
-"""
+"""Project paths."""
 
 from pathlib import Path
 
