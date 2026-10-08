@@ -1,0 +1,23 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- OS / editors ---
+.DS_Store
+.vscode/
+
+# --- Secrets ---
+.env
+
+# --- Generated data (keep the folder via .gitkeep) ---
+data/processed/*
+!data/processed/.gitkeep
+
+# NOTE: data/raw/ and submissions/ are intentionally tracked.
