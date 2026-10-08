@@ -13,6 +13,11 @@ data/raw/          original competition data
 notebooks/         final notebook, homework, lab notebooks
 src/               helper functions used by the notebooks
 submissions/       Kaggle submission files
-docs/              decision log
+docs/              decision log, Kaggle submissions log
 environment.yml    conda environment (machine_learning)
 ```
+
+## How to run
+
+Create the environment with `conda env create -f environment.yml`, then run
+`notebooks/ML_Group_41_final.ipynb` with the `machine_learning` kernel.
