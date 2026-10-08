@@ -10,7 +10,7 @@ Data: [RicardoSantos0/ML_DSAA_Practicals](https://github.com/RicardoSantos0/ML_D
 
 ```
 data/raw/          original competition data
-notebooks/         final notebook, homework, lab notebooks
+notebooks/         final notebook, homework, experiments
 src/               helper functions used by the notebooks
 submissions/       Kaggle submission files
 docs/              decision log, Kaggle submissions log
