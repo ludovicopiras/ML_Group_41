@@ -27,3 +27,6 @@ publish(version)
 | Version | Date | Author | Notebook / model | CV F1 | Kaggle public F1 | Notes |
 |---|---|---|---|---|---|---|
 | 01 | 2026-10-11 | Ludovico Piras | submission_baseline_ludovico · logistic regression (median impute + scaling + one-hot) | 0.771 | 0.77033 | threshold 0.34 from time CV + gap; CV ROC AUC 0.778; 80% predicted 1; no feature work |
+| 02 | 2026-10-15 | Ludovico Piras | submission_v02_ludovico · logistic regression + linear recipe (median/mode, log1p, robust scaler, one-hot min 50) | 0.781 | 0.77511 | threshold 0.38 from time CV + gap; CV ROC AUC 0.783; 77% predicted 1; same model as V01, only preprocessing changed |
+| 03 | 2026-10-15 | Ludovico Piras | submission_v03_v04_ludovico · logistic regression + linear recipe + month + L1 selection (C=0.05) | 0.802 | 0.80397 | threshold 0.43 from time CV + gap; CV ROC AUC 0.796; 74% predicted 1 |
+| 04 | 2026-10-15 | Ludovico Piras | submission_v03_v04_ludovico · gradient boosting (default) + tree recipe + month, no selection | 0.777 | 0.79611 | threshold 0.35 from time CV + gap; CV ROC AUC 0.774; 78% predicted 1 |
