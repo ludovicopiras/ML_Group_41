@@ -427,3 +427,41 @@ def _selector_class(name, scores):
         if found is not None:
             return found
     raise ValueError(f"{name} is not defined here nor in {', '.join(SELECTION_LIBRARIES)}")
+
+
+# -------------------------------------------------------------------------
+# Project recipe (Group 41), chosen in notebooks/experiments/preprocessing_nico.ipynb
+# -------------------------------------------------------------------------
+# Everything above is the course's preprocessing.py, unchanged. Below is the
+# recipe our preprocessing notebook selected, written as rules: every fill,
+# frequency and scale is refitted on the training rows of each fold by
+# FoldPreprocessor. The evidence for each choice is in docs/decisions.md.
+
+TARGET = "repeat_purchase_90d"
+DROPPED = ["customer_id", "purchase_date", "random_noise"]   # identifier, raw date, decoy
+
+
+def final_recipe(frame):
+    """The preprocessing recipe chosen in preprocessing_nico, for the columns of `frame`.
+
+    `frame` holds the features after cleaning; the target and the DROPPED
+    columns are left out even if present. Use it as
+    `FoldPreprocessor(final_recipe(X), selection=None)`.
+    """
+    keep = frame.drop(columns=[c for c in [TARGET, *DROPPED] if c in frame.columns])
+    return {
+        "numeric": keep.select_dtypes("number").columns.tolist(),
+        "categorical": keep.select_dtypes(["string", "object"]).columns.tolist(),
+        "dropped": list(DROPPED),
+        # Gaps: each numeric column predicted from the others; a missing label becomes "(missing)"
+        "fill": {"numeric": "iterative", "standardised": True, "random_state": 42,
+                 "categorical": "own level"},
+        # Outliers: no row removed; log1p only on the day intervals
+        "log1p": ["days_since_previous_purchase", "prior_mean_gap_days", "prior_std_gap_days"],
+        "outliers": "keep",
+        # Labels become their training frequency: a level never seen in training becomes 0
+        "encoding": "count", "drop": None,
+        "scaler": "standard",
+        # Feature selection is decided in 05_features
+        "strategy": None,
+    }
