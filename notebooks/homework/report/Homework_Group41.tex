@@ -21,7 +21,7 @@
 \titlespacing*{\section}{0pt}{12pt}{5pt}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt}
-\linespread{1.08}
+\linespread{1.07}
 \renewcommand{\arraystretch}{1.3}
 
 \begin{document}
@@ -68,7 +68,7 @@
 
 \section{Validation strategy}
 
-We started from how the test set relates to the training data. Test purchases begin 98 days after the last training purchase, each label depends on the following 90 days, and in 99.7\% of training rows the target coincides with the existence of a later row for the same customer. We therefore validate on three yearly blocks, training each fold only on purchases made at least 90 days before the block (Figure~\ref{fig:cv}), and we never derive features from a customer's later rows.
+We started from how the test set relates to the training data. Test purchases begin 98 days after the last training purchase, each label depends on the following 90 days, and in 99.7\% of training rows the target coincides with the existence of a later row for the same customer within 90 days. We therefore validate on three yearly blocks, training each fold only on purchases made more than 90 days before the block (Figure~\ref{fig:cv}), and we never derive features from a customer's later rows.
 
 \begin{figure}[h]
 \centering
@@ -89,7 +89,7 @@ We started from how the test set relates to the training data. Test purchases be
   \node[anchor=west, text=white] at (0.15,-4.02) {train.csv};
   \node at ({2026.08-2015.5},-4.02) {test.csv};
   \fill[blu!70] (0.1,1.3) rectangle (0.4,1.8); \node[anchor=west] at (0.45,1.55) {training rows};
-  \fill[black!15] (2.2,1.3) rectangle (2.5,1.8); \node[anchor=west] at (2.55,1.55) {gap $\geq$ 90 days};
+  \fill[black!15] (2.2,1.3) rectangle (2.5,1.8); \node[anchor=west] at (2.55,1.55) {90-day gap};
   \fill[acc] (4.4,1.3) rectangle (4.7,1.8); \node[anchor=west] at (4.75,1.55) {validation block};
 \end{tikzpicture}
 \caption{Expanding-window cross-validation, designed to mirror the real split (bottom row).}\label{fig:cv}
@@ -97,7 +97,7 @@ We started from how the test set relates to the training data. Test purchases be
 
 We preferred this scheme to random K-fold, which mixes past and future purchases. On our data the choice changes the conclusions: under random folds gradient boosting outperforms our model (ROC AUC 0.793 vs 0.790), while the time-ordered scheme reverses the ranking (0.774 vs 0.796). We did not use scikit-learn's \texttt{TimeSeriesSplit} either, as it splits rows into blocks of equal size and defines the gap in rows. Purchases are unevenly distributed over time, so this would produce arbitrary block boundaries and gaps of varying length. Splitting on calendar dates gives yearly blocks that cover the whole seasonal cycle and a gap of exactly 90 days.
 
-We compare candidates on ROC AUC, which does not depend on the decision threshold, fold by fold, and adopt a change only when its gain is consistent across folds or supported by the exploration. Final choices rely on F1 for the positive class, against an all-positive baseline (0.753 on the last block). We select the decision threshold on the first two blocks and evaluate it on the third.
+We compare candidates on ROC AUC, which does not depend on the decision threshold, fold by fold, and adopt a change only when its gain is consistent across folds or supported by the exploration. Final choices rely on F1 for the positive class, against an all-positive baseline (0.753 on the last block). To estimate F1 without bias, we choose the threshold on the first two blocks and score it on the third; the final threshold maximises F1 on the out-of-fold predictions of all three blocks.
 
 \section{Cleaning and pre-processing}
 
@@ -106,7 +106,7 @@ We compare candidates on ROC AUC, which does not depend on the decision threshol
 \toprule
 \textbf{Decision} & \textbf{Alternatives} & \textbf{Rationale} \\ \midrule
 Remove 65 empty train rows & impute them & No information; source of all duplicates \\
-Impossible values $\to$ NaN & row-by-row fixes & General rules (negative values, $10^9$ placeholder, inconsistent aggregates) \\
+Impossible values $\to$ NaN & row-by-row fixes & General rules (negative values, $10^9$ placeholder, inconsistent aggregates); values rebuilt where an exact identity holds \\
 Median / mode imputation & mean, zero, KNN, iterative, missing indicators & Gaps are mostly structural (first purchases); all options within 0.004 ROC AUC \\
 No outlier removal & drop extreme rows & Extremes are real large customers \\
 Signed log, robust scaling & raw scale & Skewness up to 27; not applied to trees \\
@@ -120,7 +120,7 @@ No \texttt{clientes.csv} join (for now) & country, customer-since year & +0.001 
 
 We did not discard identifier-like columns by default: we first checked whether they carry any signal. \texttt{ID} and \texttt{random\_noise} carry no signal on their own (ROC AUC 0.507 and 0.495), while \texttt{customer\_id} would let the model memorise individual customers and is kept only as a join key. Near-constant categoricals are left to the selection step.
 
-We then compared variance and mutual-information filters, recursive feature elimination and an L1-penalised logistic regression, all refitted within each fold. Only L1 improved on every fold (Table~\ref{tab:sel}), keeping 25 of the 84 encoded columns, with a similar result for a weaker penalty. Its advantage comes from the many near-duplicate columns ($|\rho| \geq 0.9$), of which it retains one per group.
+We then compared variance and mutual-information filters, recursive feature elimination and an L1-penalised logistic regression, all refitted within each fold. Only L1 gave a clear gain, +0.011 ROC AUC on every fold (Table~\ref{tab:sel}), keeping 25 of the 84 encoded columns, with a similar result for a weaker penalty. Its advantage comes from the many near-duplicate columns ($|\rho| \geq 0.9$), of which it retains one or two per group.
 
 \begin{table}[h]
 \centering\small
@@ -139,10 +139,10 @@ Wrapper: RFE & 35 & 0.788 \\
 \end{tabular}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.47\linewidth}\centering
-\caption{Models at default settings.}\label{tab:models}
+\caption{Models compared, without tuning.}\label{tab:models}
 \begin{tabular}{@{}lcc@{}}
 \toprule
-Model & ROC AUC & F1 \\ \midrule
+Model & ROC AUC & Honest F1 \\ \midrule
 \textbf{Logistic regression + L1} & \textbf{0.796} & \textbf{0.802} \\
 KNN ($k=25$) & 0.776 & 0.780 \\
 Gradient boosting & 0.774 & 0.777 \\
@@ -155,8 +155,8 @@ Decision tree (depth 6) & 0.747 & 0.765 \\
 
 \section{Current results and next steps}
 
-With the month of purchase and L1 selection, logistic regression outperforms the other models we tried at default settings (Table~\ref{tab:models}): its strongest inputs, recent purchase frequency and the usual gap between purchases, act almost monotonically on the target. The threshold of 0.43 maximises out-of-fold F1; it lies below 0.5 because, with 56\% of purchases being repeats, F1 rewards predicting the positive class more readily. With it the model reaches a validation F1 of 0.802, 0.049 above the all-positive baseline, and our submission scored 0.804 on the public leaderboard.
+With the month of purchase and L1 selection, logistic regression outperforms the other models we tried without tuning (Table~\ref{tab:models}), most likely because its strongest inputs, recent purchase frequency and the usual gap between purchases, act almost monotonically on the target. The threshold of 0.43 maximises out-of-fold F1; it lies below 0.5 because, with 56\% of purchases being repeats, F1 rewards predicting the positive class more readily. With it the model reaches a validation F1 of 0.802, 0.049 above the all-positive baseline, and our submission scored 0.804 on the public leaderboard.
 
-We are now working on two fronts. The first is hyperparameter tuning: the more flexible models are still at their default settings, and tuning will show whether they can match or improve on the linear model. The second is feature engineering with \texttt{clientes.csv}, which we did not integrate in the version presented here. Exploring the seasonal peaks, we found that purchases in peak months are not spread evenly across commercial regions. A feature that interacts the month of purchase with the customer's commercial region slightly improved our latest submission, and we are extending this idea to a geographic grouping of customers. Every such feature will be adopted only if it holds under the validation scheme of Section 2.
+We are now working on two fronts. The first is hyperparameter tuning: the more flexible models are still untuned, and tuning will show whether they can match or improve on the linear model. The second is feature engineering with \texttt{clientes.csv}, which we did not integrate in the version presented here. Exploring the seasonal peaks, we found that purchases in peak months are not spread evenly across commercial regions. A feature that interacts the month of purchase with the customer's commercial region slightly improved our latest submission, and we are extending this idea to a geographic grouping of customers. We will adopt such features only if they hold under our validation scheme.
 
 \end{document}
